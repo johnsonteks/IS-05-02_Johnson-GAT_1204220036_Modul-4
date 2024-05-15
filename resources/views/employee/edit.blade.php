@@ -1,7 +1,7 @@
 @extends('layouts.app')
 @section('content')
     <div class="container-sm my-5">
-        <form action="{{ route('employees.update', ['employee' => $employee->id]) }}" method="POST">
+        <form action="{{ route('employees.update', ['employee' => $employee->id]) }}" method="POST" enctype="multipart/form-data">
             @csrf
             @method('put')
             <div class="row justify-content-center">
@@ -70,6 +70,21 @@
                             @error('position')
                                 <div class="textdanger"><small>{{ $message }}</small></div>
                             @enderror
+                        </div>
+                        <div class="col-md-12 mb-3">
+                            <label for="age" class="form-label">Curriculum Vitae (CV)</label>
+                            @if ($employee->original_filename)
+                                <h5>{{ $employee->original_filename }}</h5>
+                                <a href="{{ route('employees.downloadFile', ['employeeId' => $employee->id]) }}" class="btn btn-primary btn-sm mt-2">
+                                    <i class="bi bi-download me-1"></i> Download CV
+                                </a>
+                            @else
+                                <h5>Tidak ada</h5>
+                            @endif
+                        </div>    
+                        <div class="col-md-12 mb-3">
+                            <label for="cv" class="form-label">Curriculum Vitae (CV)</label>
+                            <input type="file" class="form-control" name="cv" id="cv">
                         </div>
                     </div>
                     <hr>

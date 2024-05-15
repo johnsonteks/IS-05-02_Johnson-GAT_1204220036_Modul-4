@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 use App\Models\Employee;
 use App\Models\Position;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class EmployeeController extends Controller
 {
@@ -77,15 +79,29 @@ class EmployeeController extends Controller
             'email' => 'Isi :attribute dengan format yang benar',
             'numeric' => 'Isi :attribute dengan angka'
         ];
+
         $validator = Validator::make($request->all(), [
             'firstName' => 'required',
             'lastName' => 'required',
             'email' => 'required|email',
             'age' => 'required|numeric',
         ], $messages);
+
         if ($validator->fails()) {
             return redirect()->back()->withErrors($validator)->withInput();
         }
+
+        // Get File
+        $file = $request->file('cv');
+
+        if ($file != null) {
+            $originalFilename = $file->getClientOriginalName();
+            $encryptedFilename = $file->hashName();
+
+            // Store File
+            $file->store('public/files');
+        }
+
         // ELOQUENT
         $employee = new Employee;
         $employee->firstname = $request->firstName;
@@ -93,9 +109,16 @@ class EmployeeController extends Controller
         $employee->email = $request->email;
         $employee->age = $request->age;
         $employee->position_id = $request->position;
+
+        if ($file != null) {
+            $employee->original_filename = $originalFilename;
+            $employee->encrypted_filename = $encryptedFilename;
+        }
+
         $employee->save();
 
         return redirect()->route('employees.index');
+
         // $messages = [
         //     'required' => ':Attribute harus diisi.',
         //     'email' => 'Isi :attribute dengan format yang benar',
@@ -133,29 +156,33 @@ class EmployeeController extends Controller
     {
         $pageTitle = 'Employee Detail';
 
-        // RAW SQL QUERY
-
-        $employee = DB::table('employees')
-            ->select([
-                'employees.*',
-                DB::raw('employees.id AS employee_id'),
-                'positions.name AS position_name',
-            ])
-            ->leftJoin('positions', function ($join) use ($id) {
-                $join->on('employees.position_id', '=', 'positions.id');
-            })
-            ->where('employees.id', '=', $id)
-            ->first();
-
-        // $employee = collect(DB::select('
-        //     select *, employees.id as employee_id, positions.name as position_name
-        //     from employees
-        //     left join positions on employees.position_id = positions.id
-        //     where employees.id = ?
-        // ', [$id]))->first();
-
+        // ELOQUENT
+        $employee = Employee::find($id);
         return view('employee.show', compact('pageTitle', 'employee'));
     }
+    // // RAW SQL QUERY
+
+    // $employee = DB::table('employees')
+    //     ->select([
+    //         'employees.*',
+    //         DB::raw('employees.id AS employee_id'),
+    //         'positions.name AS position_name',
+    //     ])
+    //     ->leftJoin('positions', function ($join) use ($id) {
+    //         $join->on('employees.position_id', '=', 'positions.id');
+    //     })
+    //     ->where('employees.id', '=', $id)
+    //     ->first();
+
+    // $employee = collect(DB::select('
+    //     select *, employees.id as employee_id, positions.name as position_name
+    //     from employees
+    //     left join positions on employees.position_id = positions.id
+    //     where employees.id = ?
+    // ', [$id]))->first();
+
+    //     return view('employee.show', compact('pageTitle', 'employee'));
+    // }
 
     /**
      * Show the form for editing the specified resource.
@@ -172,32 +199,33 @@ class EmployeeController extends Controller
             'positions',
             'employee'
         ));
-        // $pageTitle = 'Employee Detail';
-
-        // $employee = DB::table('employees')
-        //     ->select([
-        //         'employees.*',
-        //         DB::raw('employees.id AS employee_id'),
-        //         'positions.name AS position_name',
-        //     ])
-        //     ->leftJoin('positions', function ($join) use ($id) {
-        //         $join->on('employees.position_id', '=', 'positions.id');
-        //     })
-        //     ->where('employees.id', '=', $id)
-        //     ->first();
-
-        // RAW SQL QUERY
-        // $employee = collect(DB::select('
-        //     select *, employees.id as employee_id, positions.name as position_name
-        //     from employees
-        //     left join positions on employees.position_id = positions.id
-        //     where employees.id = ?
-        // ', [$id]))->first();
-
-        // $positions = DB::table('positions')->get();
-
-        // return view('employee.edit', compact('pageTitle', 'employee', 'positions'));
     }
+    // $pageTitle = 'Employee Detail';
+
+    // $employee = DB::table('employees')
+    //     ->select([
+    //         'employees.*',
+    //         DB::raw('employees.id AS employee_id'),
+    //         'positions.name AS position_name',
+    //     ])
+    //     ->leftJoin('positions', function ($join) use ($id) {
+    //         $join->on('employees.position_id', '=', 'positions.id');
+    //     })
+    //     ->where('employees.id', '=', $id)
+    //     ->first();
+
+    // RAW SQL QUERY
+    // $employee = collect(DB::select('
+    //     select *, employees.id as employee_id, positions.name as position_name
+    //     from employees
+    //     left join positions on employees.position_id = positions.id
+    //     where employees.id = ?
+    // ', [$id]))->first();
+
+    // $positions = DB::table('positions')->get();
+
+    //     // return view('employee.edit', compact('pageTitle', 'employee', 'positions'));
+    // }
 
     /**
      * Update the specified resource in storage.
@@ -218,6 +246,17 @@ class EmployeeController extends Controller
         if ($validator->fails()) {
             return redirect()->back()->withErrors($validator)->withInput();
         }
+
+        // Get File
+        $file = $request->file('cv');
+
+        if ($file != null) {
+            $originalFilename = $file->getClientOriginalName();
+            $encryptedFilename = $file->hashName();
+
+            // Store File
+            $file->store('public/files');
+        }
         // ELOQUENT
         $employee = Employee::find($id);
         $employee->firstname = $request->firstName;
@@ -225,18 +264,25 @@ class EmployeeController extends Controller
         $employee->email = $request->email;
         $employee->age = $request->age;
         $employee->position_id = $request->position;
+
+        if ($file != null) {
+            $employee->original_filename = $originalFilename;
+            $employee->encrypted_filename = $encryptedFilename;
+        }   
+
         $employee->save();
         return redirect()->route('employees.index');
-        // DB::table('employees')->where('id', $id)->update([
-        //     'firstname' => $request->firstName,
-        //     'lastname' => $request->lastName,
-        //     'email' => $request->email,
-        //     'age' => $request->age,
-        //     'position_id' => $request->position,
-        // ]);
-
-        // return redirect()->route('employees.index');
     }
+    // DB::table('employees')->where('id', $id)->update([
+    //     'firstname' => $request->firstName,
+    //     'lastname' => $request->lastName,
+    //     'email' => $request->email,
+    //     'age' => $request->age,
+    //     'position_id' => $request->position,
+    // ]);
+
+    // return redirect()->route('employees.index');
+    // }
 
     /**
      * Remove the specified resource from storage.
@@ -246,11 +292,22 @@ class EmployeeController extends Controller
         // ELOQUENT
         Employee::find($id)->delete();
         return redirect()->route('employees.index');
-        // // QUERY BUILDER
-        // DB::table('employees')
-        //     ->where('id', $id)
-        //     ->delete();
+    }
+    // // QUERY BUILDER
+    // DB::table('employees')
+    //     ->where('id', $id)
+    //     ->delete();
 
-        // return redirect()->route('employees.index');
+    // return redirect()->route('employees.index');
+    // }
+    public function downloadFile($employeeId)
+    {
+        $employee = Employee::find($employeeId);
+        $encryptedFilename = 'public/files/' . $employee->encrypted_filename;
+        $downloadFilename = Str::lower($employee->firstname . '_' . $employee->lastname . '_cv.pdf');
+
+        if (Storage::exists($encryptedFilename)) {
+            return Storage::download($encryptedFilename, $downloadFilename);
+        }
     }
 }
